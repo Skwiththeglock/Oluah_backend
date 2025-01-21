@@ -117,6 +117,7 @@ async function GenerateFromPromptAndContext(query) {
 }
 
 app.post("/embedQuery", async function (req, res) {
+  console.log("Recommendation requested");
   const finalGeneration = await GenerateFromPromptAndContext(query, context);
   res.json(finalGeneration);
 });

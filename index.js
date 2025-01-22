@@ -14,73 +14,57 @@ const pool = new Pool({
   port: process.env.PG_PORT,
 });
 
-async function AddPrimaryKey() {
-  const result = await pool.query(
-    `
-    ALTER TABLE public.imdb_numbered_votes
-    ADD COLUMN id SERIAL PRIMARY KEY;
-      `,
-  );
-  console.log({ message: result });
-}
-async function DeleteEmbeddingColumn() {
-  const result = await pool.query(
-    `
-    ALTER TABLE public.imdb_numbered_votes DROP COLUMN embedding;
-      `,
-  );
-  console.log({ message: result });
-}
+/*Incase you want to use a vector database*/
+// async function Vectorizer() {
+//   try {
+//     await pool.query(
+//       `
+//       SELECT ai.create_vectorizer(
+//       'public.imdb_numbered_votes'::regclass,
+//       embedding=>ai.embedding_openai('text-embedding-3-small', 1536, api_key_name=>'OPENAI_API_KEY'),
+//       chunking=>ai.chunking_recursive_character_text_splitter('description'),
+//       formatting=>ai.formatting_python_template('title: $title description: $chunk, year: $year, duration: $duration, rating: $rating, stars: $stars')
+//       );
+//       `,
+//     );
+//     return { status: "success" };
+//   } catch (error) {
+//     console.log(error);
+//     return { status: "failed" };
+//   }
+// }
 
-async function Vectorizer() {
-  try {
-    await pool.query(
-      `
-      SELECT ai.create_vectorizer(
-      'public.imdb_numbered_votes'::regclass,
-      embedding=>ai.embedding_openai('text-embedding-3-small', 1536, api_key_name=>'OPENAI_API_KEY'),
-      chunking=>ai.chunking_recursive_character_text_splitter('description'),
-      formatting=>ai.formatting_python_template('title: $title description: $chunk, year: $year, duration: $duration, rating: $rating, stars: $stars')
-      );
-      `,
-    );
-    return { status: "success" };
-  } catch (error) {
-    console.log(error);
-    return { status: "failed" };
-  }
-}
-
-async function EmbedQuery(query) {
-  try {
-    // Step 1: Get the embedding for the query
-    const embeddingResult = await pool.query(
-      `SELECT ai.openai_embed('text-embedding-3-small', $1) AS embedding`,
-      [query],
-    );
-
-    const embedding = embeddingResult.rows[0].embedding;
-
-    // Step 2: Use the embedding in the main query
-    const result = await pool.query(
-      `
-    SELECT chunk
-    FROM imdb_numbered_votes_embedding_store
-    ORDER BY embedding <=> $1
-    LIMIT 3;
-    `,
-      [embedding],
-    );
-
-    const rows = result.rows;
-    const context = rows.map((value) => `Chunk: ${value.chunk}`).join("\n\n");
-
-    return { status: "success", chunk: context };
-  } catch (error) {
-    console.log(error);
-    return { status: "failed" };
-  }
-}
+/*Also incase you want to use a vector database*/
+// async function EmbedQuery(query) {
+//   try {
+//     // Step 1: Get the embedding for the query
+//     const embeddingResult = await pool.query(
+//       `SELECT ai.openai_embed('text-embedding-3-small', $1) AS embedding`,
+//       [query],
+//     );
+//
+//     const embedding = embeddingResult.rows[0].embedding;
+//
+//     // Step 2: Use the embedding in the main query
+//     const result = await pool.query(
+//       `
+//     SELECT chunk
+//     FROM imdb_numbered_votes_embedding_store
+//     ORDER BY embedding <=> $1
+//     LIMIT 3;
+//     `,
+//       [embedding],
+//     );
+//
+//     const rows = result.rows;
+//     const context = rows.map((value) => `Chunk: ${value.chunk}`).join("\n\n");
+//
+//     return { status: "success", chunk: context };
+//   } catch (error) {
+//     console.log(error);
+//     return { status: "failed" };
+//   }
+// }
 
 const system_prompt = `
 You are a Computer Science Textbook Recommendation Assistant. Your job is to recommend 1-3 textbooks based on the user's query, ensuring they are highly relevant and of good quality. Follow these guidelines:  
@@ -122,11 +106,7 @@ app.post("/embedQuery", async function (req, res) {
   res.json(finalGeneration);
 });
 
-app.get("/", function (req, res) {
-  console.log("Get Request Received");
-  res.send("Yo Whatsapp");
-});
-
+//For keeping render active
 app.get("/ping", function (req, res) {
   console.log("Get Request Received");
   res.send("Yo Whatsapp");
